@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block container_class %}wide-screen{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>🏢 구매처(공급사) 관리</h2>
+    <a href="{% url 'supplier_create' %}" class="btn" style="background-color: #ff9800;">
+        + 신규 구매처 등록
+    </a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>상호명</th>
+            <th>사업자번호</th>
+            <th>전화번호</th>
+            <th>계좌정보</th>
+            <th>주소</th>
+            <th style="text-align: center;">관리</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for supplier in suppliers %}
+        <tr>
+            <td style="font-weight: bold;">
+                <a href="{% url 'supplier_detail' supplier.pk %}" style="color: #4527a0; text-decoration: none;">
+                    {{ supplier.name }}
+                </a>
+            </td>
+            <td>{{ supplier.registration_number|default:"-" }}</td>
+            <td>{{ supplier.phone|default:"-" }}</td>
+            <td>
+                {% if supplier.bank_name %}
+                    {{ supplier.bank_name }} {{ supplier.account_number }} ({{ supplier.account_owner }})
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td style="font-size: 0.9rem;">{{ supplier.address|default:"-" }}</td>
+            <td style="text-align: center; white-space: nowrap;">
+                <div style="display: inline-flex; gap: 5px;">
+                    <a href="{% url 'supplier_update' supplier.pk %}" class="btn" style="padding: 5px 10px; font-size: 0.8rem; background-color: #757575;">수정</a>
+                    <form action="{% url 'supplier_delete' supplier.pk %}" method="POST" style="margin: 0; display: inline-flex;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn" onclick="return confirm('삭제하시겠습니까?');" style="padding: 5px 10px; font-size: 0.8rem; background-color: #e53935;">삭제</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align: center; padding: 30px;">등록된 구매처가 없습니다.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div style="margin-top: 20px; text-align: center;">
+    <a href="{% url 'book_list' %}" class="btn" style="background-color: #757575;">← 교재 목록으로</a>
+</div>
+{% endblock %}

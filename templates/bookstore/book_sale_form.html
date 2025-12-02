@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <div style="border-bottom: 2px solid #ff9800; margin-bottom: 20px; padding-bottom: 10px;">
+        <h2>📚 교재 판매 (지급)</h2>
+        <p style="font-size: 1.1rem;">
+            대상 학생: <strong style="color: #4527a0;">{{ student.name }}</strong>
+        </p>
+    </div>
+
+    <div class="info-card" style="padding: 30px;">
+
+    {% if form.errors %}
+        <div style="background-color: #ffebee; color: #c62828; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ef9a9a;">
+            <strong>⚠️ 입력 오류가 있습니다:</strong>
+            <ul style="margin: 5px 0 0 20px;">
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li>{{ field.label }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <div style="margin-bottom: 20px;">
+                <label for="id_sale_date" style="font-weight: bold;">📅 판매일 (지급일)</label>
+                {{ form.sale_date }}
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label for="id_book" style="font-weight: bold;">판매할 교재</label>
+                {{ form.book }}
+                <small style="color: #888;">* 재고가 있는 교재만 표시됩니다.</small>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label for="id_quantity"><strong>수량</strong></label>
+                    {{ form.quantity }}
+                </div>
+                <div>
+                    <label for="id_price"><strong>판매 가격 (단가)</strong></label>
+                    {{ form.price }}
+                    <small style="color: #888;">* 교재 등록 시 설정한 판매가가 자동 입력됩니다.</small>
+                </div>
+            </div>
+
+            <div style="background-color: #fbe9e7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: #d84315; font-weight: bold;">
+                    {{ form.is_paid }}
+                    즉시 결제 완료 처리하기
+                </label>
+                <small style="color: #d84315; display: block; margin-top: 5px;">
+                    * 체크 해제 시: 학생의 <strong>[미납 수업료]</strong>에 자동 합산됩니다. (후불 청구)<br>
+                    * 체크 시: 미납금에 합산되지 않고 판매 기록만 남습니다. (현장 결제)
+                </small>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label for="id_memo">비고</label>
+                {{ form.memo }}
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" class="btn" style="background-color: #e65100; padding: 10px 40px; font-size: 1.1rem;">
+                    판매 확정
+                </button>
+                <a href="{% url 'student_detail' student.pk %}" class="btn" style="background-color: #757575; margin-left: 10px;">취소</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const bookSelect = document.getElementById('id_book');
+        const priceInput = document.getElementById('id_price');
+
+        // 교재별 가격 정보를 자바스크립트 객체로 저장
+        const bookPrices = {
+            {% for book in form.fields.book.queryset %}
+                "{{ book.pk }}": {{ book.price }},
+            {% endfor %}
+        };
+
+        // 교재를 선택하면 해당 가격을 가격 필드에 입력
+        bookSelect.addEventListener('change', function() {
+            const selectedBookId = this.value;
+            if (selectedBookId && bookPrices[selectedBookId] !== undefined) {
+                priceInput.value = bookPrices[selectedBookId];
+            }
+        });
+    });
+</script>
+{% endblock %}

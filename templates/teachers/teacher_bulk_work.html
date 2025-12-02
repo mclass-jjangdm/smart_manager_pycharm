@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+    <div style="border-bottom: 2px solid #673ab7; margin-bottom: 20px; padding-bottom: 10px;">
+        <h2>⚡ 근무 기록 일괄 입력</h2>
+        <p style="color: #666;">날짜를 선택하고, 근무한 교사를 체크한 뒤 시간을 확인하세요.</p>
+    </div>
+
+    <form method="POST" class="info-card" style="padding: 30px;">
+        {% csrf_token %}
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 30px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
+            <div>
+                <label><strong>📅 근무 날짜</strong></label>
+                <input type="date" name="date" value="{{ today }}" required>
+            </div>
+            <div>
+                <label><strong>📝 비고 (전체 적용)</strong></label>
+                <input type="text" name="memo" placeholder="예: 전체 보강, 특강 등">
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <label style="font-size: 1.1rem; margin: 0;"><strong>👥 교사별 시간 설정</strong></label>
+            <button type="button" onclick="toggleAll()" style="background: none; border: none; color: #673ab7; cursor: pointer; font-weight: bold;">
+                [전체 선택/해제]
+            </button>
+        </div>
+
+        <table style="border: 1px solid #eee;">
+            <thead>
+                <tr>
+                    <th width="50" style="text-align: center;">선택</th>
+                    <th>교사 이름</th>
+                    <th>시작 시간 (24h)</th>
+                    <th>종료 시간 (24h)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for teacher in teachers %}
+                <tr onclick="toggleRow('{{ teacher.id }}')" style="cursor: pointer;">
+                    <td style="text-align: center;">
+                        <input type="checkbox" name="teacher_ids" value="{{ teacher.id }}" id="chk_{{ teacher.id }}"
+                               style="transform: scale(1.2);">
+                    </td>
+                    <td>
+                        <label for="chk_{{ teacher.id }}" style="cursor: pointer; font-weight: 500;">
+                            {{ teacher.name }}
+                        </label>
+                    </td>
+                    <td onclick="event.stopPropagation()">
+                        <input type="time" name="start_time_{{ teacher.id }}" value="18:00" style="width: 100%;">
+                    </td>
+                    <td onclick="event.stopPropagation()">
+                        <input type="time" name="end_time_{{ teacher.id }}" value="20:00" style="width: 100%;">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <button type="submit" class="btn" style="padding: 12px 40px; font-size: 1.1rem;">
+                일괄 저장하기
+            </button>
+            <a href="{% url 'teacher_list' %}" class="btn" style="background-color: #757575; margin-left: 10px;">취소</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    // 전체 선택/해제
+    function toggleAll() {
+        const checkboxes = document.querySelectorAll('input[name="teacher_ids"]');
+        const targetState = !checkboxes[0].checked;
+        checkboxes.forEach(cb => cb.checked = targetState);
+    }
+
+    // 행 클릭 시 체크박스 토글
+    function toggleRow(id) {
+        const checkbox = document.getElementById('chk_' + id);
+        checkbox.checked = !checkbox.checked;
+    }
+
+
+    // [추가] 날짜 변경 시 근무 불가 교사 체크 로직
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.querySelector('input[name="date"]');
+
+        // 1. 페이지 로드 시 현재 날짜로 한 번 체크
+        checkUnavailableTeachers(dateInput.value);
+
+        // 2. 날짜가 변경될 때마다 체크
+        dateInput.addEventListener('change', function() {
+            checkUnavailableTeachers(this.value);
+        });
+    });
+
+    function checkUnavailableTeachers(date) {
+        if (!date) return;
+
+        // Django URL을 JS fetch로 호출
+        fetch(`{% url 'check_availability_api' %}?date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                const ids = data.unavailable_ids;
+                updateTeacherRows(ids);
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function updateTeacherRows(unavailableIds) {
+        // 모든 교사 행(row)을 돌면서 초기화
+        const rows = document.querySelectorAll('tbody tr');
+
+        rows.forEach(row => {
+            // tr 태그의 onclick 속성에서 teacher ID 추출 (예: toggleRow('5'))
+            // 좀 더 안전하게 input checkbox의 value로 찾습니다.
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            const teacherId = parseInt(checkbox.value);
+            const startInput = row.querySelector(`input[name="start_time_${teacherId}"]`);
+            const endInput = row.querySelector(`input[name="end_time_${teacherId}"]`);
+            const label = row.querySelector('label');
+
+            // 1. 만약 근무 불가 목록에 있다면
+            if (unavailableIds.includes(teacherId)) {
+                // 스타일 변경 (연한 빨간색 배경)
+                row.style.backgroundColor = '#ffebee';
+                row.style.opacity = '0.7';
+
+                // 시간 비우기 [요구사항 2]
+                startInput.value = '';
+                endInput.value = '';
+                startInput.disabled = true; // 입력 못하게 막음 (선택사항)
+                endInput.disabled = true;
+
+                // 체크박스 해제 및 비활성화
+                checkbox.checked = false;
+                checkbox.disabled = true;
+
+                // 이름 옆에 (근무 불가) 표시
+                if (!label.innerText.includes('(휴무)')) {
+                    label.innerText += ' (휴무)';
+                    label.style.color = '#c62828';
+                }
+            }
+            // 2. 근무 가능 상태라면 (초기화)
+            else {
+                row.style.backgroundColor = '';
+                row.style.opacity = '1';
+
+                // 시간 기본값 복구 (18:00, 20:00)
+                if (startInput.value === '') startInput.value = '18:00';
+                if (endInput.value === '') endInput.value = '20:00';
+                startInput.disabled = false;
+                endInput.disabled = false;
+
+                checkbox.disabled = false;
+
+                // (휴무) 텍스트 제거
+                label.innerText = label.innerText.replace(' (휴무)', '');
+                label.style.color = '';
+            }
+        });
+    }
+</script>
+{% endblock %}

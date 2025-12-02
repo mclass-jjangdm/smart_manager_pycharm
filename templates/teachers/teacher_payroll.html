@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block container_class %}wide-screen{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>💰 {{ year }}년 {{ month }}월 급여 내역</h2>
+
+    <form method="GET" style="display: flex; gap: 10px; align-items: center;">
+        <select name="year" onchange="this.form.submit()" style="padding: 8px;">
+            {% for y in year_range %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}년</option>
+            {% endfor %}
+        </select>
+        <select name="month" onchange="this.form.submit()" style="padding: 8px;">
+            {% for m in month_range %}
+            <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}월</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit">조회</button></noscript>
+    </form>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+
+    <div style="display: flex; gap: 10px;">
+        <a href="{% url 'teacher_payroll_pdf' %}?year={{ year }}&month={{ month }}" target="_blank" class="btn" style="background-color: #e53935; padding: 8px 15px; font-size: 0.9rem;">
+            📄 PDF로 내보내기
+        </a>
+        <a href="{% url 'teacher_payroll_year_list' %}" class="btn" style="background-color: #009688; padding: 8px 15px; font-size: 0.9rem;">
+            📅 연도별 지급 내역
+        </a>
+
+        <form action="{% url 'teacher_payroll_bulk_process' %}" method="POST" id="bulkPaymentForm" style="margin: 0; display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="payment_date" id="bulk_payment_date_hidden">
+            <button type="submit" class="btn" id="bulkPaymentButton"
+                    onclick="return confirmBulkPayment(this, '{{ year }}', '{{ month }}');"
+                    style="background-color: #1a237e; padding: 8px 15px; font-size: 0.9rem;">
+                 미지급 전체 지급 처리
+            </button>
+        </form>
+    </div>
+
+    <label for="id_payment_date" style="font-weight: bold; font-size: 0.95rem; display: flex; align-items: center; gap: 10px;">
+        일괄 지급일 선택:
+        <input type="date" id="id_payment_date"
+               style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem;">
+    </label>
+</div>
+
+{% if messages %}
+<ul class="messages" style="margin-bottom: 15px; list-style: none; padding: 10px 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 4px;">
+    {% for message in messages %}
+    <li style="color: {% if '오류' in message %}#e53935{% else %}#2e7d32{% endif %}; font-weight: bold;">{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<table>
+    <thead>
+        <tr>
+            <th>교사명</th>
+            <th>은행 / 계좌번호</th>
+            <th style="text-align: center;">근무일수</th>
+            <th style="text-align: center;">근무시간</th>
+            <th style="text-align: right;">기본급</th>
+            <th style="text-align: right;">추가급여</th>
+            <th style="text-align: right; color: #4527a0;">실지급액</th>
+            <th style="text-align: center;">지급 상태</th>
+            <th style="text-align: center;">처리</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in payroll_data %}
+        <tr>
+            <td style="font-weight: bold;">{{ row.teacher.name }}</td>
+            <td style="font-size: 0.9rem; color: #666;">
+                {{ row.bank_name }} <br> {{ row.account_number }}
+            </td>
+            <td style="text-align: center;">{{ row.work_days }}일</td>
+            <td style="text-align: center;">{{ row.work_hours }}h</td>
+            <td style="text-align: right;">{{ row.base_salary|intcomma }}원</td>
+            <td style="text-align: right;">{{ row.extra_pay|intcomma }}원</td>
+            <td style="text-align: right; font-weight: bold; color: #4527a0;">
+                {{ row.total_salary|intcomma }}원
+            </td>
+
+            <td style="text-align: center; font-weight: bold;">
+                {% with current_date=row.payment_date|default_if_none:""|date:"Y-m-d" %}
+                {% if row.is_paid %}
+                    <span style="color: #2e7d32;">완료 ({{ current_date }})</span>
+                {% else %}
+                    <span style="color: #e53935;">미지급</span>
+                {% endif %}
+                {% endwith %}
+            </td>
+
+            <td style="text-align: center;">
+                {% if not row.is_paid %}
+                    <form action="{% url 'teacher_payroll_process' %}" method="POST" class="payment-form" style="margin: 0; display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="teacher_id" value="{{ row.teacher.pk }}">
+                        <input type="hidden" name="year" value="{{ year }}">
+                        <input type="hidden" name="month" value="{{ month }}">
+                        <input type="hidden" name="amount" value="{{ row.total_salary }}">
+                        <input type="hidden" name="payment_date" class="payment-date-input">
+
+                        <button type="submit" class="btn payment-button"
+                            onclick="return handlePaymentAction(this, '{{ row.teacher.name }}', '{{ row.total_salary|intcomma }}', '지급 처리');"
+                            style="padding: 5px 10px; font-size: 0.8rem; background-color: #2e7d32;">
+                            지급 처리
+                        </button>
+                    </form>
+                {% else %}
+                    <div style="display: flex; flex-direction: column; gap: 5px; align-items: center;">
+
+                        <form action="{% url 'teacher_payroll_process' %}" method="POST" class="payment-form" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="teacher_id" value="{{ row.teacher.pk }}">
+                            <input type="hidden" name="year" value="{{ year }}">
+                            <input type="hidden" name="month" value="{{ month }}">
+                            <input type="hidden" name="amount" value="{{ row.total_salary }}">
+                            <input type="hidden" name="payment_date" class="payment-date-input">
+
+                            <button type="submit" class="btn payment-button"
+                                onclick="return handlePaymentAction(this, '{{ row.teacher.name }}', '{{ row.total_salary|intcomma }}', '지급일 수정', '{{ row.payment_date|date:"Y-m-d" }}');"
+                                style="padding: 5px 10px; font-size: 0.8rem; background-color: #ff9800;">
+                                지급일 수정
+                            </button>
+                        </form>
+
+                        <form action="{% url 'teacher_payroll_delete_record' %}" method="POST"
+                            onsubmit="return confirm('경고: {{ row.teacher.name }} 선생님의 {{ year }}년 {{ month }}월 지급 기록을 삭제하고 미지급 상태로 되돌리시겠습니까?');"
+                            style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="teacher_id" value="{{ row.teacher.pk }}">
+                            <input type="hidden" name="year" value="{{ year }}">
+                            <input type="hidden" name="month" value="{{ month }}">
+                            <button type="submit" style="background: none; border: none; color: #e53935; cursor: pointer; font-size: 0.8rem; text-decoration: underline;">
+                                지급 취소
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="9" style="text-align: center; padding: 30px;">
+                해당 월의 급여 지급 대상이 없습니다.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+
+    <tfoot>
+        <tr style="background-color: #e8eaf6; border-top: 2px solid #3f51b5;">
+            <td colspan="6" style="text-align: center; font-weight: bold; padding: 15px; font-size: 1.1rem; color: #1a237e;">
+                {{ year }}년 {{ month }}월 급여 총계
+            </td>
+            <td style="text-align: right; font-weight: bold; padding: 15px; font-size: 1.1rem; color: #d32f2f;">
+                {{ grand_total|intcomma }}원
+            </td>
+            <td colspan="2"></td> </tr>
+    </tfoot>
+
+</table>
+
+</table>
+
+<script>
+    const dateInput = document.getElementById('id_payment_date');
+    const bulkDateHidden = document.getElementById('bulk_payment_date_hidden');
+
+    // 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+    function getTodayDate() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    /**
+     * 개별 지급 처리 또는 지급일 수정을 처리합니다.
+     */
+    function handlePaymentAction(button, name, amount, actionType, currentPaymentDate) {
+        const dateValue = dateInput.value;
+
+        if (!dateValue) {
+            alert("지급일을 선택해주세요.");
+            return false;
+        }
+
+        // --- 지급일 수정 로직 (개별 선택 유도) ---
+        if (actionType === '지급일 수정') {
+
+            // 사용자가 날짜를 변경하지 않고 기존 DB 값과 동일한 날짜를 선택한 경우
+            if (dateValue === currentPaymentDate) {
+                 alert(`[${name} 선생님] 현재 지급일은 ${currentPaymentDate} 입니다. 날짜를 수정하려면 상단 날짜 선택 필드에서 새로운 날짜를 선택해주세요.`);
+                 return false; // 제출을 막고 재선택을 유도
+            }
+        }
+        // --- 지급일 수정 로직 끝 ---
+
+
+        // --- 폼 제출 및 확인 (지급 처리 및 수정 공통) ---
+        const form = button.closest('.payment-form');
+        const hiddenDateInput = form.querySelector('.payment-date-input');
+        hiddenDateInput.value = dateValue;
+
+        // 최종 확인 메시지
+        return confirm(`[${dateValue}] 날짜로 ${name} 선생님의 ${amount}원 급여를 ${actionType}하시겠습니까?`);
+    }
+
+
+    // 일괄 지급 처리 버튼 클릭 시 호출되는 함수
+    function confirmBulkPayment(button, year, month) {
+        const dateValue = dateInput.value;
+        if (!dateValue) {
+            alert("지급일을 선택해주세요.");
+            return false;
+        }
+
+        // 숨겨진 bulk form 날짜 필드에 선택된 날짜 값 주입
+        bulkDateHidden.value = dateValue;
+
+        return confirm(`[${dateValue}] 날짜로 ${year}년 ${month}월의 미지급된 모든 급여를 일괄 처리하시겠습니까?`);
+    }
+</script>
+
+{% endblock %}

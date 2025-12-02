@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>📝 신규 학생 등록</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+        
+        {{ form.as_p }}
+        
+        <br>
+        <button type="submit" class="btn">저장하기</button>
+        <a href="{% url 'student_list' %}" style="margin-left: 10px;">취소</a>
+    </form>
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<style>
+    /* [수정] 레이아웃: 왼쪽(메인) 2 : 오른쪽(사이드) 1 비율 */
+    .layout-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 30px;
+        margin-top: 20px;
+    }
+
+    /* 모바일 대응 */
+    @media (max-width: 900px) {
+        .layout-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .content-card {
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        margin-bottom: 25px;
+    }
+
+    .section-title {
+        margin-top: 0;
+        border-bottom: 2px solid #673ab7;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        font-size: 1.2rem;
+        color: #4527a0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <h2 style="margin:0; font-size: 1.8rem;">
+        <span style="color:#673ab7;">●</span> {{ teacher.name }} 선생님
+    </h2>
+    <a href="{% url 'teacher_update' teacher.pk %}" class="btn" style="background-color: #ff9800;">정보 수정</a>
+</div>
+
+<div class="layout-grid">
+
+    <div>
+        <div class="content-card">
+            <h3 class="section-title">📋 근무 내역 리스트 (최신순)</h3>
+
+            <table style="font-size: 0.95rem;">
+                <thead>
+                    <tr>
+                        <th>날짜</th>
+                        <th>시간</th>
+                        <th style="text-align: center;">근무 시간</th>
+                        <th>비고</th>
+                        <th style="text-align: center;">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in work_records %}
+                    <tr>
+                        <td>{{ record.date|date:"Y-m-d (D)" }}</td>
+                        <td>
+                            <span style="color: #555;">{{ record.start_time|time:"H:i" }} ~ {{ record.end_time|time:"H:i" }}</span>
+                        </td>
+                        <td style="font-weight: bold; color: #673ab7; text-align: center;">{{ record.get_work_hours }} h</td>
+                        <td>{{ record.memo|default:"-" }}</td>
+                        <td style="text-align: center;">
+                            <form method="POST" onsubmit="return confirm('정말 이 기록을 삭제하시겠습니까?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_work">
+                                <input type="hidden" name="record_id" value="{{ record.pk }}">
+                                <button type="submit" style="color: #e53935; border: none; background: none; cursor: pointer; text-decoration: underline; font-size: 0.8rem;">
+                                    삭제
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align: center; padding: 30px; color: #999;">등록된 근무 기록이 없습니다.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="content-card">
+            <h3 class="section-title">📅 월별 근무 요약 및 다운로드</h3>
+            <table style="width: 100%; font-size: 0.9rem; border: 1px solid #eee;">
+                <thead style="background: #f3e5f5;">
+                    <tr>
+                        <th style="padding: 12px;">년-월</th>
+                        <th style="padding: 12px; text-align: center;">총 근무 시간</th>
+                        <th style="padding: 12px; text-align: center;">내역서 다운로드</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for month, hours in monthly_summary.items %}
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; font-weight: 500;">{{ month }}</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold; color: #4527a0;">
+                            {{ hours }} 시간
+                        </td>
+                        <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">
+                            <a href="{% url 'teacher_work_history_pdf' teacher.pk %}?date={{ month }}" target="_blank"
+                               class="btn" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 4px; background-color: #5e35b1;">
+                                📄 PDF 다운로드
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 20px; color: #999;">데이터가 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div>
+        <div class="content-card" style="border-top: 4px solid #e53935;">
+            <h3 class="section-title" style="color: #e53935; border-bottom-color: #e53935;">
+                🚫 근무 불가 일정
+            </h3>
+
+            <form method="POST" style="margin-bottom: 20px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="unavailable">
+
+                <label style="font-size: 0.9rem;">날짜 선택</label>
+                {{ unavailable_form.date }}
+
+                <div style="margin-top: 10px;">
+                    <label style="font-size: 0.9rem;">사유</label>
+                    {{ unavailable_form.reason }}
+                </div>
+
+                <button type="submit" class="btn" style="background-color: #e53935; margin-top: 15px; width: 100%; font-size: 0.9rem;">
+                    일정 등록
+                </button>
+            </form>
+
+            {% if unavailable_dates %}
+                <h4 style="margin-top: 20px; color: #666; font-size: 0.9rem; border-top: 1px solid #eee; padding-top: 10px;">등록된 일정 목록</h4>
+                <ul style="padding-left: 20px; margin-bottom: 0; font-size: 0.9rem;">
+                    {% for item in unavailable_dates %}
+                    <li style="margin-bottom: 8px; color: #333;">
+                        <strong>{{ item.date|date:"m/d" }}</strong> : {{ item.reason|default:"-" }}
+
+                        <form method="POST" style="display: inline; margin-left: 5px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_unavailable">
+                            <input type="hidden" name="unavailable_id" value="{{ item.pk }}">
+                            <button type="submit" onclick="return confirm('삭제하시겠습니까?')"
+                                    style="border: none; background: none; color: #999; cursor: pointer; font-size: 0.8rem; padding: 0;">
+                                [x]
+                            </button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p style="color: #999; font-size: 0.85rem; text-align: center; margin-top: 10px;">등록된 일정이 없습니다.</p>
+            {% endif %}
+        </div>
+
+        <div class="content-card" style="background-color: #f8f9fa;">
+            <h3 class="section-title" style="font-size: 1.1rem; border-bottom: 1px solid #ddd; margin-bottom: 15px;">
+                👤 기본 정보 요약
+            </h3>
+            <ul style="list-style: none; padding: 0; font-size: 0.9rem; line-height: 1.8;">
+                <li><strong>연락처:</strong> {{ teacher.phone }}</li>
+                <li><strong>이메일:</strong> {{ teacher.email|default:"-" }}</li>
+                <li style="margin-top: 10px;"><strong>급여 기준:</strong> <br> {{ teacher.base_pay|intcomma }}원 (기본)</li>
+                <li><strong>추가 급여:</strong> {{ teacher.extra_pay|intcomma }}원</li>
+                <li style="margin-top: 10px;"><strong>계좌 정보:</strong> <br> {{ teacher.bank_name }} <br> {{ teacher.account_number }}</li>
+                <li style="margin-top: 10px; color: #666;"><strong>입사일:</strong> {{ teacher.hire_date|date:"Y-m-d" }}</li>
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+<div style="margin-top: 30px; text-align: center;">
+    <a href="{% url 'teacher_list' %}" class="btn" style="background-color: #757575;">← 교사 목록으로</a>
+</div>
+{% endblock %}

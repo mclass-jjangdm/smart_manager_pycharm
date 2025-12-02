@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<style>
+    /* 공통 스타일 */
+    .info-card {
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        margin-bottom: 30px; /* 카드 간 간격 확보 */
+    }
+
+    .info-card h3 {
+        margin-top: 0;
+        border-bottom: 2px solid #673ab7;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        font-size: 1.2rem;
+        color: #4527a0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .info-row { display: flex; border-bottom: 1px solid #f0f0f0; padding: 12px 0; }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { flex: 0 0 140px; font-weight: 600; color: #666; }
+    .info-value { flex: 1; color: #333; font-weight: 500; word-break: break-word; }
+
+    table th, table td { vertical-align: middle; }
+
+    /* 요약 카드 스타일 */
+    .summary-card {
+        background-color: #fff8e1;
+        border: 2px solid #ffb74d;
+        border-radius: 10px;
+        padding: 20px;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        margin-top: 20px;
+    }
+    .summary-item { text-align: center; }
+    .summary-label { font-size: 0.9rem; color: #795548; margin-bottom: 5px; font-weight: bold; }
+    .summary-value { font-size: 1.4rem; font-weight: bold; color: #d32f2f; }
+    .summary-plus { font-size: 1.5rem; color: #bbb; font-weight: bold; }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+    <h2 style="margin:0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
+        {% if student.status == 'ATTENDING' %}
+            <span style="color:#673ab7;">●</span>
+        {% elif student.status == 'DISCHARGED' %}
+            <span style="color:#999;">●</span>
+        {% else %}
+            <span style="color:#ff9800;">●</span>
+        {% endif %}
+
+        {{ student.name }}
+
+        <span style="font-size: 1.2rem; color: #777; font-weight: normal;">
+            ({{ student.grade }})
+            <span style="font-size: 0.9rem; padding: 2px 8px; border-radius: 12px; vertical-align: middle;
+                  {% if student.status == 'ATTENDING' %}background:#e8eaf6; color:#3f51b5;
+                  {% elif student.status == 'DISCHARGED' %}background:#f5f5f5; color:#999;
+                  {% else %}background:#fff3e0; color:#ef6c00;{% endif %}">
+                {{ student.get_status_display }}
+            </span>
+        </span>
+    </h2>
+
+    <div style="display: flex; gap: 5px;">
+        <a href="{% url 'student_sms_send' student.pk %}" class="btn" style="background-color: #673ab7;">📩 문자</a>
+        <a href="{% url 'student_update' student.pk %}" class="btn" style="background-color: #ff9800;">수정</a>
+
+        <form action="{% url 'student_delete' student.pk %}" method="POST" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" onclick="return confirm('⚠️ 경고: 정말로 삭제하시겠습니까?\n\n학생의 수강 기록, 결제 내역, 상담 일지 등 모든 정보가 영구적으로 사라집니다.\n(단순히 그만둔 학생이라면 \'정보 수정\'에서 상태를 \'퇴원\'으로 변경하세요.)');"
+                    class="btn" style="background-color: #e53935;">
+                삭제
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="info-card">
+    <h3>👤 기본 정보</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        <div>
+            <div class="info-row"><div class="info-label">고유번호</div><div class="info-value" style="color:#4527a0; font-weight:bold;">{{ student.student_number }}</div></div>
+            <div class="info-row"><div class="info-label">학교</div><div class="info-value">{{ student.school|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">성별</div><div class="info-value">{{ student.get_gender_display }}</div></div>
+            <div class="info-row"><div class="info-label">이메일</div><div class="info-value">{{ student.email|default:"-" }}</div></div>
+        </div>
+        <div>
+            <div class="info-row"><div class="info-label">학생 연락처</div><div class="info-value">{{ student.student_phone|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">부모님 연락처</div><div class="info-value">{{ student.parent_phone|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">현금영수증</div><div class="info-value">{{ student.receipt_phone|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">등록일</div><div class="info-value">{{ student.created_at|date:"Y-m-d" }}</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="info-card" style="border-left: 5px solid #7e57c2;">
+    <h3>
+        <span>👨‍🏫 수강 신청 및 관리</span>
+        <a href="{% url 'student_class_edit' student.pk %}" class="btn" style="background-color: #7e57c2; font-size: 0.9rem;">⚙️ 수강 변경</a>
+    </h3>
+
+    {% if student.enrolled_classes.exists %}
+        <ul style="padding: 0; list-style: none;">
+            {% for class in student.enrolled_classes.all %}
+                <li style="margin-bottom: 10px; padding: 15px; background-color: #f5f5f5; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="font-size: 1.1rem; color: #333;">{{ class.name }}</strong>
+                        <span style="color: #666; font-size: 0.9rem; margin-left: 5px;">
+                            (T. {{ class.teacher.name|default:"미정" }})
+                        </span>
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 3px;">
+                            {{ class.get_formatted_schedule }}
+                        </div>
+                        <div style="font-size: 0.9rem; color: #d32f2f; font-weight: bold; margin-top: 5px;">
+                            수강료: {{ class.tuition_fee|intcomma }}원
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 5px; align-items: center;">
+{#                        <form action="{% url 'tuition_charge' student.pk class.pk %}" method="POST" style="margin:0;">#}
+{#                            {% csrf_token %}#}
+{#                            <button type="submit" onclick="return confirm('이번 달 수강료를 수동으로 청구하시겠습니까?');"#}
+{#                                    style="background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: bold;">#}
+{#                                ￦ 청구#}
+{#                            </button>#}
+{#                        </form>#}
+                        <form action="{% url 'student_class_drop' student.pk class.pk %}" method="POST" style="margin:0;">
+                            {% csrf_token %}
+                            <button type="submit" onclick="return confirm('정말 수강을 취소하시겠습니까?\n미납된 수강료 내역도 함께 삭제됩니다.');"
+                                    style="background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                                🗑️ 삭제
+                            </button>
+                        </form>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div style="text-align: center; padding: 30px; color: #999; background-color: #fafafa; border-radius: 8px;">
+            <p>현재 수강 중인 수업이 없습니다.</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="info-card">
+    <h3>📝 상담 일지 및 파일</h3>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <div>
+            <h4 style="margin-top:0; color:#666; font-size:1rem;">상담 정보</h4>
+            <div class="info-row"><div class="info-label">인터뷰 날짜</div><div class="info-value">{{ student.interview_date|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">인터뷰 성적</div><div class="info-value">{{ student.interview_score|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">인터뷰 정보</div><div class="info-value">{{ student.interview_info|default:"-"|linebreaksbr }}</div></div>
+        </div>
+        <div>
+            <h4 style="margin-top:0; color:#666; font-size:1rem;">학적 정보</h4>
+            <div class="info-row"><div class="info-label">첫 수업일</div><div class="info-value">{{ student.first_class_date|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">종강일</div><div class="info-value">{{ student.last_class_date|default:"-" }}</div></div>
+            <div class="info-row"><div class="info-label">참고 사항</div><div class="info-value">{{ student.misc|default:"-"|linebreaksbr }}</div></div>
+        </div>
+    </div>
+
+    <div style="background-color: #f3e5f5; padding: 15px; border-radius: 8px; border: 1px solid #e1bee7;">
+        <h4 style="margin-top:0; margin-bottom: 10px; color: #4a148c; font-size: 1rem;">📁 파일 첨부</h4>
+
+        <form method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; flex-direction: column;">
+            {% csrf_token %}
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">{{ file_form.file }}</div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div style="flex: 1;">{{ file_form.description }}</div>
+                <button type="submit" class="btn" style="padding: 8px 20px; background-color: #7b1fa2;">업로드</button>
+            </div>
+            <small style="color: #666;">* Ctrl 키를 누르고 여러 파일을 선택할 수 있습니다.</small>
+        </form>
+
+        {% if files %}
+            <div style="margin-top: 15px; border-top: 1px solid #d1c4e9; padding-top: 10px;">
+                <table style="font-size: 0.9rem; width: 100%;">
+                    {% for file in files %}
+                    <tr>
+                        <td style="padding: 5px 0;">
+                            <a href="{{ file.file.url }}" target="_blank" style="text-decoration: underline; color: #4a148c; font-weight: bold;">
+                                📄 {{ file }}
+                            </a>
+                            <span style="color:#888; font-size: 0.8rem; margin-left: 5px;">({{ file.uploaded_at|date:"Y-m-d" }})</span>
+                        </td>
+                        <td style="color: #555;">{{ file.description|default:"" }}</td>
+                        <td style="text-align: right;">
+                            <form action="{% url 'delete_student_file' file.pk %}" method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" onclick="return confirm('정말 삭제하시겠습니까?');"
+                                        style="color: #c62828; border: none; background: none; cursor: pointer; font-size: 0.8rem;">
+                                    [삭제]
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<hr style="margin: 40px 0; border: 0; border-top: 2px dashed #ddd;">
+
+<div class="info-card" style="border-left: 5px solid #ff9800;">
+    <h3>
+        <span style="color: #e65100;">📚 교재 구매/지급 내역</span>
+        <a href="{% url 'book_sale_create' student.pk %}" class="btn" style="background-color: #e65100; font-size: 0.9rem;">+ 교재 판매</a>
+    </h3>
+
+    <table>
+        <thead style="background-color: #fff3e0;">
+            <tr>
+                <th>날짜</th>
+                <th>교재명</th>
+                <th style="text-align: center;">수량</th>
+                <th style="text-align: right;">단가</th>
+                <th style="text-align: right;">합계</th>
+                <th style="text-align: center;">상태 / 관리</th>
+                <th>비고</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sale in student.book_sales.all %}
+            <tr>
+                <td>{{ sale.sale_date|date:"Y-m-d" }}</td>
+                <td style="font-weight: bold;">{{ sale.book.title }}</td>
+                <td style="text-align: center;">{{ sale.quantity }}</td>
+                <td style="text-align: right;">{{ sale.price|intcomma }}</td>
+                <td style="text-align: right; font-weight: bold;">{{ sale.get_total_price|intcomma }}</td>
+                <td style="text-align: center;">
+                    {% if sale.is_paid %}
+                        <span style="color: #2e7d32; font-weight: bold;">
+                            ✅ 완료 <span style="font-size:0.8rem; color:#666;">({{ sale.payment_date|date:"m/d" }})</span>
+                        </span>
+                    {% else %}
+                        <form action="{% url 'book_sale_settle' sale.pk %}" method="POST" style="margin: 0;">
+                            {% csrf_token %}
+                            <div style="display: flex; gap: 5px; justify-content: center; align-items: center; white-space: nowrap;">
+                                <input type="date" name="payment_date" value="{% now 'Y-m-d' %}" required
+                                       style="padding: 4px; border: 1px solid #ffcc80; border-radius: 4px; width: auto; font-size: 0.8rem;">
+                                <button type="submit" class="btn" onclick="return confirm('납부 처리 하시겠습니까?');"
+                                        style="background-color: #ff9800; padding: 4px 10px; font-size: 0.8rem; white-space: nowrap;">
+                                    납부
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </td>
+                <td style="color: #888;">{{ sale.memo|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align: center; padding: 20px; color: #999;">교재 구매 내역이 없습니다.</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background-color: #fff3e0; color: #795548;">
+                <td colspan="4" style="text-align: right; padding: 10px; font-weight: bold;">📚 교재 미납 합계:</td>
+                <td colspan="3" style="font-weight: bold; padding: 10px; color: #e65100;">{{ unpaid_book_total|intcomma }}원</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="info-card" style="border-left: 5px solid #2196f3;">
+    <h3>
+        <span style="color: #1565c0;">🏫 수강료 청구/납부 내역</span>
+    </h3>
+
+    <table>
+        <thead style="background-color: #e3f2fd;">
+            <tr>
+                <th>청구일</th>
+                <th>수업명</th>
+                <th>내용 (월)</th>
+                <th style="text-align: right;">청구 금액</th>
+                <th style="text-align: center;">상태 / 관리</th>
+                <th>비고</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in student.tuition_logs.all %}
+            <tr>
+                <td>{{ log.charge_date|date:"Y-m-d" }}</td>
+                <td style="font-weight: bold;">{{ log.class_info.name }}</td>
+                <td>{{ log.month }}</td>
+                <td style="text-align: right; font-weight: bold;">{{ log.amount|intcomma }}</td>
+                <td style="text-align: center;">
+                    {% if log.is_paid %}
+                        <span style="color: #2e7d32; font-weight: bold;">
+                            ✅ 완료 <span style="font-size:0.8rem; color:#666;">({{ log.payment_date|date:"m/d" }})</span>
+                        </span>
+                    {% else %}
+                        <form action="{% url 'tuition_settle' log.pk %}" method="POST" style="margin: 0;">
+                            {% csrf_token %}
+                            <div style="display: flex; gap: 5px; justify-content: center; align-items: center; white-space: nowrap;">
+                                <input type="date" name="payment_date" value="{% now 'Y-m-d' %}" required
+                                       style="padding: 4px; border: 1px solid #90caf9; border-radius: 4px; width: auto; font-size: 0.8rem;">
+                                <button type="submit" class="btn" onclick="return confirm('수강료 납부 처리 하시겠습니까?');"
+                                        style="background-color: #2196f3; padding: 4px 10px; font-size: 0.8rem; white-space: nowrap;">
+                                    납부
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </td>
+                <td style="color: #888;">{{ log.memo|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" style="text-align: center; padding: 20px; color: #999;">수강료 청구 내역이 없습니다.</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background-color: #e3f2fd; color: #1565c0;">
+                <td colspan="3" style="text-align: right; padding: 10px; font-weight: bold;">🏫 수강료 미납 합계:</td>
+                <td colspan="3" style="font-weight: bold; padding: 10px; color: #1565c0;">{{ unpaid_tuition_total|intcomma }}원</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="summary-card">
+    <div class="summary-item">
+        <div class="summary-label">📚 교재 미납</div>
+        <div class="summary-value" style="color: #fb8c00;">{{ unpaid_book_total|intcomma }}원</div>
+    </div>
+    <div class="summary-plus">+</div>
+    <div class="summary-item">
+        <div class="summary-label">🏫 수강료 미납</div>
+        <div class="summary-value" style="color: #1976d2;">{{ unpaid_tuition_total|intcomma }}원</div>
+    </div>
+    <div class="summary-plus">=</div>
+    <div class="summary-item">
+        <div class="summary-label">💰 총 납부할 금액</div>
+        <div class="summary-value" style="font-size: 1.8rem; color: #d32f2f;">{{ student.unpaid_amount|intcomma }}원</div>
+    </div>
+</div>
+
+<div style="margin-top: 30px; text-align: center;">
+    <a href="{% url 'student_list' %}" class="btn" style="background-color: #757575;">← 목록으로 돌아가기</a>
+</div>
+
+{% endblock %}

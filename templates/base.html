@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Manager</title>
+    <link rel="icon" type="image/png" href="{% static 'images/favicon-16x16.png' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="{% url 'dashboard' %}" class="brand">Smart Manager</a>
+
+            {% if user.is_authenticated %}
+            <div class="nav-menu">
+                <a href="{% url 'class_list' %}" class="nav-item"> 수업</a>
+                <a href="{% url 'student_list' %}" class="nav-item"> 학생</a>
+                <a href="{% url 'teacher_list' %}" class="nav-item"> 교사</a>
+                <a href="{% url 'book_list' %}" class="nav-item"> 교재</a>
+                <a href="{% url 'monthly_schedule' %}" class="nav-item"> 시간표</a>
+
+                <form action="{% url 'logout' %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-item btn-outline" style="border:none; background:none; cursor:pointer;">
+                        로그아웃
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container {% block container_class %}{% endblock %}">
+        {% if messages %}
+            {% for message in messages %}
+            <div style="padding: 15px; margin-bottom: 20px; border-radius: 8px; background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE;">
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+    </div>
+</body>
+</html>

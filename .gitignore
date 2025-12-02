@@ -1,0 +1,33 @@
+# .gitignore
+
+# 1. 파이썬/Django 기본
+__pycache__/
+*.py[cod]
+*$py.class
+db.sqlite3
+*.log
+
+# 2. 가상환경 (venv를 쓴다면)
+venv/
+.venv/
+env/
+
+# 3. PyCharm 설정 파일 (팀원과 공유할 필요 없음)
+.idea/
+
+# 4. 환경변수 및 비밀키 (절대 올리면 안 됨!)
+.env
+secrets.json
+
+# 5. 미디어 파일 (학생 사진 등은 서버에만 있어야 함)
+media/
+static/
+!static/css/  # (단, 개발자가 만든 css 폴더는 예외로 올림)
+!static/js/
+!static/img/
+
+# 6. Docker (필요에 따라)
+.pytest_cache/
+
+
+templates_backup/

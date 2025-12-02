@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>📂 학생 일괄 등록</h2>
+    <p>엑셀(.xlsx, .xls) 또는 CSV 파일을 업로드하여 여러 학생을 한 번에 등록합니다.</p>
+
+    <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ffeeba;">
+        <strong>⚠️ 엑셀 파일 작성 규칙</strong>
+        <ul style="margin-top: 5px; margin-bottom: 0;">
+            <li>첫 번째 줄(헤더)에 다음 컬럼명이 반드시 포함되어야 합니다: <br>
+                <code>이름</code>, <code>학년</code>, <code>성별</code>, <code>학교</code>, <code>학생 전화번호</code>, <code>부모님 전화번호</code>, <code>이메일</code>
+            </li>
+            <li>학년은 <code>K5</code> ~ <code>K12</code> 형식으로 입력해 주세요.</li>
+        </ul>
+    </div>
+
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li style="color: red;">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="file_input" style="font-weight: bold;">파일 선택:</label>
+        <input type="file" name="upload_file" id="file_input" accept=".csv, .xlsx, .xls" required>
+        <br><br>
+        <button type="submit" class="btn">일괄 등록 시작</button>
+        <a href="{% url 'student_list' %}" style="margin-left: 10px;">취소</a>
+    </form>
+{% endblock %}

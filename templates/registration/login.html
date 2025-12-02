@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; height: 70vh;">
+    <div class="info-card" style="width: 100%; max-width: 400px; padding: 40px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h2 style="color: #4527a0; margin-bottom: 30px;">🔐 Smart Manager</h2>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+                <p style="color: red; font-size: 0.9rem;">아이디 또는 비밀번호가 일치하지 않습니다.</p>
+            {% endif %}
+
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="id_username" style="font-weight: bold; color: #555;">아이디</label>
+                <input type="text" name="username" autofocus required id="id_username" 
+                       style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+            </div>
+
+            <div style="margin-bottom: 30px; text-align: left;">
+                <label for="id_password" style="font-weight: bold; color: #555;">비밀번호</label>
+                <input type="password" name="password" required id="id_password" 
+                       style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px;">
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%; padding: 12px; font-size: 1.1rem; background-color: #4527a0;">로그인</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <h2 style="border-bottom: 2px solid #673ab7; padding-bottom: 10px; margin-bottom: 20px;">
+        {{ title }}
+    </h2>
+
+    <div class="info-card" style="padding: 30px;">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div style="margin-bottom: 15px;">
+                <label><strong>상호명 (필수)</strong></label>
+                {{ form.name }}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                <div><label>사업자 번호</label>{{ form.registration_number }}</div>
+                <div><label>전화번호</label>{{ form.phone }}</div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label>주소</label>
+                {{ form.address }}
+            </div>
+
+            <p style="margin-top: 20px; font-weight: bold; color: #4527a0;">💰 계좌 정보</p>
+            <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div><label>은행명</label>{{ form.bank_name }}</div>
+                <div><label>계좌번호</label>{{ form.account_number }}</div>
+                <div><label>예금주</label>{{ form.account_owner }}</div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" class="btn" style="padding: 10px 40px;">저장하기</button>
+                <a href="{% url 'supplier_list' %}" class="btn" style="background-color: #757575; margin-left: 10px;">취소</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

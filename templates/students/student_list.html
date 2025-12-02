@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block container_class %}wide-screen{% endblock %}
+{% block content %}
+<style>
+    /* 테이블이 너무 넓어질 경우를 대비한 스타일 */
+    .table-responsive {
+        overflow-x: auto; /* 가로 스크롤 허용 */
+        white-space: nowrap; /* 줄바꿈 방지 */
+    }
+    table th, table td {
+        padding: 10px;
+        font-size: 0.9rem; /* 글자 크기 약간 축소 */
+        border: 1px solid #ddd; /* 테두리 추가 */
+    }
+    table th {
+        background-color: #f2f2f2;
+        text-align: center;
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>👩‍🎓 학생 관리 (전체 목록)</h2>
+    <div>
+        <a href="{% url 'student_bulk_upload' %}" class="btn" style="background-color: #2e7d32; margin-right: 10px;">일괄 등록</a>
+        <a href="{% url 'student_create' %}" class="btn">학생 등록</a>
+        <a href="{% url 'student_export' %}" class="btn" style="background-color: #1976d2; margin-right: 10px;">
+            📥 데이터 내보내기
+        </a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table>
+        <thead>
+            <tr>
+                <th>고유번호</th>
+                <th>이름</th>
+                <th>성별</th>
+                <th>학년</th>
+                <th>학교</th>
+                <th>학생 H.P</th>
+                <th>부모님 H.P</th>
+                <th>이메일</th>
+                <th>현금영수증</th>
+                <th>인터뷰 날짜</th>
+                <th>인터뷰 성적</th>
+                <th>인터뷰 정보</th>
+                <th>첫 수업일</th>
+                <th>그만둔 날</th>
+                <th>기타</th>
+                <th>등록일</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td style="font-weight: bold; color: #1a237e;">{{ student.student_number }}</td>
+                <td>
+                    <a href="{% url 'student_detail' student.pk %}">
+                        <strong>{{ student.name }}</strong>
+                    </a>
+                </td>
+                <td style="text-align: center;">{{ student.get_gender_display }}</td>
+                <td style="text-align: center;">{{ student.grade }}</td>
+                <td>{{ student.school|default:"-" }}</td>
+                <td>{{ student.student_phone|default:"-" }}</td>
+                <td>{{ student.parent_phone|default:"-" }}</td>
+                <td>{{ student.email|default:"-" }}</td>
+                <td>{{ student.receipt_phone|default:"-" }}</td>
+                <td>{{ student.interview_date|default:"-" }}</td>
+                <td>{{ student.interview_score|default:"-" }}</td>
+                <td title="{{ student.interview_info }}">
+                    {{ student.interview_info|truncatechars:10|default:"-" }}
+                </td>
+                <td>{{ student.first_class_date|default:"-" }}</td>
+                <td>{{ student.last_class_date|default:"-" }}</td>
+                <td title="{{ student.misc }}">
+                    {{ student.misc|truncatechars:10|default:"-" }}
+                </td>
+                <td style="font-size: 0.8rem; color: #666;">
+                    {{ student.created_at|date:"Y-m-d" }}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="16" style="text-align: center; padding: 30px;">
+                    등록된 학생이 없습니다.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

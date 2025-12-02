@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>{{ title }}</h2>
+
+    <form method="POST" style="max-width: 600px; margin: 0 auto;">
+        {% csrf_token %}
+
+        {% for field in form %}
+        <div style="margin-bottom: 15px;">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+            <small style="color: #666;">{{ field.help_text }}</small>
+            {% endif %}
+            {% for error in field.errors %}
+            <div style="color: red; font-size: 0.9rem;">{{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        <br>
+        <button type="submit" class="btn">저장하기</button>
+        <a href="{% url 'teacher_list' %}" class="btn" style="background-color: #757575; margin-left: 10px;">취소</a>
+    </form>
+{% endblock %}

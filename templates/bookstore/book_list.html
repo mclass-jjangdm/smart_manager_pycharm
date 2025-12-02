@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block container_class %}wide-screen{% endblock %}
+
+{% block content %}
+<div style="width: 100%;">
+    <div style="margin-bottom: 20px; text-align: center;">
+        <form method="GET" action="{% url 'book_list' %}" style="display: flex; gap: 10px; justify-content: center;">
+            <input type="text" name="q" value="{{ query }}"
+                   id="search_query"
+                   placeholder="도서명, 저자 또는 바코드(ISBN)"
+                   style="padding: 10px; width: 50%; min-width: 300px; font-size: 1.1rem; border: 2px solid #673ab7; border-radius: 5px;">
+            <button type="submit" class="btn" style="background-color: #673ab7; padding: 10px 20px; font-size: 1.1rem;">검색</button>
+        </form>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="color: #4527a0; margin: 0;">📚 교재 목록</h2>
+
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'book_upload' %}" class="btn" style="background-color: #2e7d32;">
+                📂 교재 일괄 등록
+            </a>
+            <a href="{% url 'book_create' %}" class="btn" style="background-color: #ff9800;">
+                + 신규 교재 입고
+            </a>
+        </div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; background-color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <thead style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+            <tr>
+                <th style="padding: 12px; white-space: nowrap;">ISBN</th>
+                <th style="padding: 12px;">교재명</th>
+                <th style="padding: 12px;">출판사</th>
+                <th style="padding: 12px; text-align: right; white-space: nowrap;">재고</th>
+                <th style="padding: 12px; text-align: right; white-space: nowrap;">판매가</th>
+                <th style="padding: 12px; text-align: center; width: 150px;">관리</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for book in page_obj %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 12px; color: #666; font-size: 0.9rem;">{{ book.isbn }}</td>
+                <td style="padding: 12px; font-weight: bold;">
+                    <a href="{% url 'book_update' book.pk %}" style="text-decoration: none; color: #333;">
+                        {{ book.title }}
+                    </a>
+                </td>
+                <td style="padding: 12px;">{{ book.publisher }}</td>
+                <td style="padding: 12px; text-align: right;">
+                    {% if book.stock <= 5 %}
+                        <span style="color: #d32f2f; font-weight: bold;">{{ book.stock }}권</span>
+                    {% else %}
+                        <span style="color: #2e7d32; font-weight: bold;">{{ book.stock }}권</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 12px; text-align: right;">{{ book.price|intcomma }}원</td>
+                <td style="padding: 12px; text-align: center;">
+                    <div style="display: flex; gap: 5px; justify-content: center;">
+                        <a href="{% url 'book_restock' book.pk %}" class="btn" style="background-color: #2196f3; padding: 4px 8px; font-size: 0.8rem; white-space: nowrap;">추가입고</a>
+                        <a href="{% url 'book_return' book.pk %}" class="btn" style="background-color: #e53935; padding: 4px 8px; font-size: 0.8rem; white-space: nowrap;">반품</a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                    {% if query %}
+                        <p style="font-size: 1.1rem; color: #d32f2f; font-weight: bold;">🔍 '{{ query }}' 검색 결과가 없습니다.</p>
+                        <p>잠시 후 신규 등록 페이지로 이동합니다...</p>
+                    {% else %}
+                        <p>등록된 교재가 없습니다.</p>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="margin-top: 20px; text-align: center;">
+        {% if page_obj.has_previous %}
+            <a href="?page=1&q={{ query }}" class="btn" style="background: #eee; color: #333;">처음</a>
+            <a href="?page={{ page_obj.previous_page_number }}&q={{ query }}" class="btn" style="background: #eee; color: #333;">이전</a>
+        {% endif %}
+        <span style="margin: 0 10px;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&q={{ query }}" class="btn" style="background: #eee; color: #333;">다음</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}&q={{ query }}" class="btn" style="background: #eee; color: #333;">마지막</a>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('search_query');
+
+        // 1. 자동 포커스
+        if (searchInput) {
+            const val = searchInput.value;
+            searchInput.value = '';
+            searchInput.focus();
+            searchInput.value = val;
+        }
+
+        // 2. 검색 결과 없음 -> 자동 이동 로직
+        const isSearchEmpty = "{{ is_search_empty|yesno:'true,false' }}" === "true";
+
+        if (isSearchEmpty) {
+            setTimeout(function() {
+                if (confirm("검색된 교재가 없습니다.\n\n'신규 교재 입고' 페이지로 이동하시겠습니까?")) {
+                    const isbnValue = searchInput.value;
+                    window.location.href = "{% url 'book_create' %}?isbn=" + encodeURIComponent(isbnValue);
+                } else {
+                    if (searchInput) searchInput.focus();
+                }
+            }, 100);
+        }
+    });
+</script>
+{% endblock %}

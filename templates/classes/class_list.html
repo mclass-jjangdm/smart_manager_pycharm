@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block container_class %}wide-screen{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>👨‍🏫 수업(강좌) 관리</h2>
+    <a href="{% url 'class_create' %}" class="btn" style="background-color: #ff9800;">
+        + 신규 수업 개설
+    </a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width: 5%;">상태</th>
+            <th style="width: 20%;">수업명</th>
+            <th style="width: 15%;">담당 교사</th>
+            <th style="width: 15%;">수업 시간</th>
+            <th style="width: 10%; text-align: right;">수강료</th>
+            <th style="width: 10%; text-align: center;">수강생</th>
+            <th style="width: 15%; text-align: center;">기간</th>
+            <th style="width: 10%; text-align: center;">관리</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for class in classes %}
+        <tr style="{% if not class.is_active %}background-color: #f5f5f5; color: #999;{% endif %}">
+            <td style="text-align: center;">
+                {% if class.is_active %}
+                    <span style="color: #2e7d32; font-weight: bold; font-size: 0.8rem; border: 1px solid #a5d6a7; padding: 2px 6px; border-radius: 4px; background-color: #e8f5e9;">진행중</span>
+                {% else %}
+                    <span style="color: #757575; font-size: 0.8rem; border: 1px solid #ccc; padding: 2px 6px; border-radius: 4px;">종강</span>
+                {% endif %}
+            </td>
+            <td style="font-weight: bold;">{{ class.name }}</td>
+            <td>
+                {% if class.teacher %}
+                    {{ class.teacher.name }}
+                {% else %}
+                    <span style="color: #ccc;">(미정)</span>
+                {% endif %}
+            </td>
+            <td>{{ class.get_formatted_schedule }}</td>
+            <td style="text-align: right; font-weight: bold;">{{ class.tuition_fee|intcomma }}원</td>
+            <td style="text-align: center;">
+                <span style="background-color: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 10px; font-size: 0.9rem; font-weight: bold;">
+                    {{ class.students.count }}명
+                </span>
+            </td>
+            <td style="text-align: center; font-size: 0.85rem;">
+                {% if class.start_date %}
+                    {{ class.start_date|date:"y.m.d" }} ~ {{ class.end_date|date:"y.m.d" }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td style="text-align: center; white-space: nowrap;">
+                <div style="display: flex; gap: 5px; justify-content: center;">
+                    <a href="{% url 'class_update' class.pk %}" class="btn" style="padding: 5px 10px; font-size: 0.8rem; background-color: #757575;">수정</a>
+                    <form action="{% url 'class_delete' class.pk %}" method="POST" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn" onclick="return confirm('정말 이 수업을 삭제하시겠습니까?');"
+                                style="padding: 5px 10px; font-size: 0.8rem; background-color: #e53935;">
+                            삭제
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                개설된 수업이 없습니다. 신규 수업을 등록해 주세요.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

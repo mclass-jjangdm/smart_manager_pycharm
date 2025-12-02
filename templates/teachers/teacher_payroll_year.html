@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block container_class %}wide-screen{% endblock %}
+
+{% block content %}
+<style>
+    /* 테이블 스타일 강화 */
+    .year-table th, .year-table td {
+        border: 1px solid #ddd;
+        padding: 8px 5px; /* 좌우 패딩을 줄여서 12개월이 다 들어가게 함 */
+        font-size: 0.9rem;
+    }
+    .year-table th {
+        background-color: #f3e5f5; /* 연한 보라색 */
+        text-align: center;
+        color: #4527a0;
+    }
+    .year-table td.amount {
+        text-align: right;
+    }
+    .year-table tr:hover {
+        background-color: #fafafa;
+    }
+    /* 합계 행/열 스타일 */
+    .total-col {
+        background-color: #fff3e0;
+        font-weight: bold;
+        color: #e65100;
+    }
+    .total-row td {
+        background-color: #e8eaf6;
+        font-weight: bold;
+        color: #1a237e;
+        border-top: 2px solid #3f51b5;
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>📅 {{ selected_year }}년 연간 급여 대장</h2>
+
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <form method="GET" style="display: flex; align-items: center; gap: 10px;">
+            <label style="font-weight: bold;">연도 선택:</label>
+            <select name="year" onchange="this.form.submit()" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+                {% for y in year_range %}
+                <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}년</option>
+                {% endfor %}
+            </select>
+        </form>
+
+        <a href="{% url 'teacher_payroll' %}" class="btn" style="background-color: #757575;">
+            ← 월별 급여 관리로
+        </a>
+    </div>
+</div>
+
+<div style="overflow-x: auto;">
+    <table class="year-table">
+        <thead>
+            <tr>
+                <th style="min-width: 80px; position: sticky; left: 0; background-color: #f3e5f5; z-index: 1;">교사명</th>
+                <th>1월</th>
+                <th>2월</th>
+                <th>3월</th>
+                <th>4월</th>
+                <th>5월</th>
+                <th>6월</th>
+                <th>7월</th>
+                <th>8월</th>
+                <th>9월</th>
+                <th>10월</th>
+                <th>11월</th>
+                <th>12월</th>
+                <th class="total-col">합계</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in report_data %}
+            <tr>
+                <td style="font-weight: bold; position: sticky; left: 0; background-color: white;">
+                    {{ row.teacher.name }}
+                </td>
+
+                {% for amount in row.monthly_amounts %}
+                <td class="amount">
+                    {% if amount > 0 %}
+                        {{ amount|intcomma }}
+                    {% else %}
+                        <span style="color: #ddd;">-</span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+
+                <td class="amount total-col">
+                    {{ row.row_total|intcomma }}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="14" style="text-align: center; padding: 30px; color: #999;">
+                    {{ selected_year }}년도 지급 내역이 없습니다.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+
+        {% if report_data %}
+        <tfoot>
+            <tr class="total-row">
+                <td style="text-align: center; position: sticky; left: 0; background-color: #e8eaf6;">월계</td>
+
+                {% for total in monthly_totals %}
+                <td class="amount">
+                    {{ total|intcomma }}
+                </td>
+                {% endfor %}
+
+                <td class="amount" style="color: #d32f2f; background-color: #ffccbc;">
+                    {{ grand_total|intcomma }}
+                </td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>
+{% endblock %}

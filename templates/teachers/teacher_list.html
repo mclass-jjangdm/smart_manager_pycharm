@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block container_class %}wide-screen{% endblock %}
+
+{% block content %}
+<style>
+    /* 퇴사자 행 스타일 (회색 처리 및 투명도 조절) */
+    tr.retired {
+        background-color: #f5f5f5 !important;
+        color: #999 !important;
+    }
+    tr.retired a {
+        color: #999 !important; /* 링크 색상도 흐리게 */
+        text-decoration: line-through; /* 이름에 취소선 */
+    }
+    tr.retired td {
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    /* 토글 스위치 스타일 (선택사항: 예쁜 체크박스) */
+    .toggle-label {
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        user-select: none;
+    }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>👨‍🏫 교사 관리</h2>
+
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <form method="GET" id="filterForm" style="margin: 0;">
+            <label class="toggle-label">
+                <input type="checkbox" name="show_retired"
+                       {% if show_retired %}checked{% endif %}
+                       onchange="document.getElementById('filterForm').submit()">
+                퇴사자 포함하여 보기
+            </label>
+        </form>
+
+        <div style="width: 1px; height: 20px; background: #ddd; margin: 0 5px;"></div>
+
+        <a href="{% url 'teacher_payroll' %}" class="btn" style="background-color: #1a237e;">
+            💰 급여 계산
+        </a>
+        <a href="{% url 'teacher_bulk_work' %}" class="btn" style="background-color: #673ab7;">
+            ⚡ 근무 기록 일괄 입력
+        </a>
+        <a href="{% url 'teacher_create' %}" class="btn">신규 교사 등록</a>
+    </div>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>이름</th>
+            <th>성별</th>
+            <th>전화번호</th>
+            <th>이메일</th>
+            <th>입사일</th>
+            <th>퇴사일</th> <th>급여 기준</th>
+            <th>추가 급여</th>
+            <th>은행/계좌</th>
+            <th>관리</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for teacher in teachers %}
+        <tr class="{% if teacher.resign_date %}retired{% endif %}">
+            <td>
+                <a href="{% url 'teacher_detail' teacher.pk %}" style="font-weight: bold; font-size: 1.1rem;">
+                    {{ teacher.name }}
+                </a>
+            </td>
+            <td>{{ teacher.get_gender_display }}</td>
+            <td>{{ teacher.phone }}</td>
+            <td>{{ teacher.email|default:"-" }}</td>
+            <td>{{ teacher.hire_date|date:"Y-m-d" }}</td>
+
+            <td style="color: #e53935;">{{ teacher.resign_date|date:"Y-m-d"|default:"-" }}</td>
+
+            <td style="text-align: right;">{{ teacher.base_pay|default:"0"|intcomma }}원</td>
+            <td style="text-align: right;">{{ teacher.extra_pay|default:"0"|intcomma }}원</td>
+            <td>{{ teacher.bank_name }} / {{ teacher.account_number }}</td>
+            <td>
+                <a href="{% url 'teacher_update' teacher.pk %}" class="btn" style="padding: 5px 10px; font-size: 0.8rem; background-color: #ff9800;">수정</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="10" style="text-align: center; padding: 30px;">등록된 교사가 없습니다.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

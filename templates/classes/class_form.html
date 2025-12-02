@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <h2 style="border-bottom: 2px solid #673ab7; padding-bottom: 10px; margin-bottom: 20px;">
+        {{ title }}
+    </h2>
+
+    <div class="info-card" style="padding: 30px; background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+        <form method="POST">
+            {% csrf_token %}
+
+            <h4 style="color: #4527a0; margin-bottom: 15px; font-size: 1.1rem;">📋 수업 정보</h4>
+
+            <div style="margin-bottom: 20px;">
+                <label for="id_name" style="font-weight: bold; display: block; margin-bottom: 5px;">수업명 (강좌명)</label>
+                {{ form.name }}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label for="id_teacher" style="font-weight: bold; display: block; margin-bottom: 5px;">담당 교사</label>
+                    {{ form.teacher }}
+                </div>
+                <div>
+                    <label for="id_tuition_fee" style="font-weight: bold; display: block; margin-bottom: 5px;">수강료 (월)</label>
+                    {{ form.tuition_fee }}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 10px;">📅 수업 시간표 선택</label>
+
+                {{ form.schedule }}
+
+                <div style="overflow-x: auto; border: 1px solid #ddd; border-radius: 5px;">
+                    <table style="width: 100%; font-size: 0.9rem; text-align: center; border-collapse: collapse;">
+                        <thead style="background-color: #f5f5f5;">
+                            <tr>
+                                <th style="padding: 8px; border-bottom: 1px solid #ddd; min-width: 60px;">시간</th>
+                                {% for day in "월화수목금토일" %}
+                                    <th style="padding: 8px; border-bottom: 1px solid #ddd;">{{ day }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% with "10 11 12 13 14 15 16 17 18 19 20 21 22" as times %}
+                                {% for hour in times.split %}
+                                <tr>
+                                    <td style="padding: 6px; border-bottom: 1px solid #eee; font-weight: bold; color: #666; background-color: #fafafa;">
+                                        {{ hour }}:00
+                                    </td>
+                                    {% for day in "월화수목금토일" %}
+                                    <td style="padding: 6px; border-bottom: 1px solid #eee;">
+                                        <input type="checkbox" class="time-slot"
+                                               data-day="{{ day }}" data-hour="{{ hour }}"
+                                               id="time_{{ day }}_{{ hour }}"
+                                               style="transform: scale(1.2); cursor: pointer;">
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            {% endwith %}
+                        </tbody>
+                    </table>
+                </div>
+                <small style="color: #888;">* 원하는 시간대를 클릭하세요. (연속된 시간은 자동으로 묶어서 표시됩니다)</small>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label for="id_start_date" style="font-weight: bold; display: block; margin-bottom: 5px;">개강일</label>
+                    {{ form.start_date }}
+                </div>
+                <div>
+                    <label for="id_end_date" style="font-weight: bold; display: block; margin-bottom: 5px;">종강일</label>
+                    {{ form.end_date }}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    {{ form.is_active }}
+                    <strong style="color: #2e7d32;">현재 진행 중인 수업입니다 (체크 해제 시 '종강' 처리)</strong>
+                </label>
+            </div>
+
+            <hr style="margin: 30px 0; border: 0; border-top: 1px solid #eee;">
+
+            <div style="display: flex; justify-content: space-between; align-items: end; margin-bottom: 15px;">
+                <h4 style="color: #4527a0; margin: 0; font-size: 1.1rem;">
+                    👩‍🎓 수강생 선택
+                    <span style="font-size: 0.9rem; color: #666; font-weight: normal;">(학년별 정렬)</span>
+                </h4>
+
+                <div style="background-color: #e3f2fd; padding: 5px 15px; border-radius: 20px; border: 1px solid #90caf9;">
+                    <label for="id_enrollment_date" style="font-size: 0.9rem; font-weight: bold; color: #1565c0; margin-right: 5px;">
+                        📅 적용 기준일:
+                    </label>
+                    {{ form.enrollment_date }}
+                </div>
+            </div>
+
+            <div style="border: 1px solid #ccc; border-radius: 5px; padding: 20px; max-height: 500px; overflow-y: auto; background-color: #fafafa;">
+
+                {% regroup all_students by get_grade_display as grade_list %}
+
+                {% for grade in grade_list %}
+                    <div style="margin-bottom: 25px;">
+                        <h5 style="margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 2px solid #ddd; color: #555; font-weight: bold;">
+                            {{ grade.grouper }} <span style="font-size: 0.8rem; color: #888; font-weight: normal;">({{ grade.list|length }}명)</span>
+                        </h5>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">
+                            {% for student in grade.list %}
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; padding: 8px 12px; border-radius: 4px; border: 1px solid #eee; transition: 0.2s;"
+                                       onmouseover="this.style.borderColor='#b39ddb'; this.style.backgroundColor='#f3e5f5';"
+                                       onmouseout="if(!this.querySelector('input').checked){this.style.borderColor='#eee'; this.style.backgroundColor='white';}">
+
+                                    <input type="checkbox" name="students" value="{{ student.pk }}"
+                                           {% if student.pk in selected_ids %}checked{% endif %}
+                                           style="transform: scale(1.2); cursor: pointer;">
+
+                                    <span style="font-size: 0.95rem; font-weight: 500; color: #333;">{{ student.name }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <p style="text-align: center; color: #999; padding: 20px;">등록된 학생이 없습니다.</p>
+                {% endfor %}
+            </div>
+
+            <div style="text-align: right; font-size: 0.8rem; color: #666; margin-top: 5px;">
+                * 체크박스를 선택하면 상단의 '적용 기준일'에 따라 수강료가 자동 계산됩니다.
+            </div>
+
+            <div style="text-align: center; margin-top: 40px;">
+                <button type="submit" class="btn" style="padding: 12px 50px; font-size: 1.1rem; background-color: #4527a0; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                    저장하기
+                </button>
+                <a href="{% url 'class_list' %}" class="btn" style="background-color: #757575; margin-left: 10px; padding: 12px 30px; color: white; text-decoration: none; border-radius: 5px;">
+                    취소
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const scheduleInput = document.getElementById('id_schedule');
+        const checkboxes = document.querySelectorAll('.time-slot');
+
+        // [1] 초기화: DB에 저장된 스케줄이 있다면 체크박스에 표시 (수정 모드)
+        if (scheduleInput.value) {
+            // 저장된 값 예시: "월-10,수-14,금-14"
+            const savedSlots = scheduleInput.value.split(',');
+            savedSlots.forEach(slot => {
+                if (slot.trim() !== "") {
+                    const parts = slot.split('-'); // [월, 10]
+                    if (parts.length === 2) {
+                        const day = parts[0];
+                        const hour = parts[1];
+                        const checkbox = document.getElementById(`time_${day}_${hour}`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            // 선택된 셀 시각 효과
+                            checkbox.parentElement.style.backgroundColor = '#e3f2fd';
+                            checkbox.parentElement.style.borderBottom = '1px solid #90caf9';
+                        }
+                    }
+                }
+            });
+        }
+
+        // [2] 변경 감지: 체크박스를 누를 때마다 숨겨진 필드 업데이트
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                updateScheduleInput();
+
+                // 배경색 토글
+                if (this.checked) {
+                    this.parentElement.style.backgroundColor = '#e3f2fd';
+                    this.parentElement.style.borderBottom = '1px solid #90caf9';
+                } else {
+                    this.parentElement.style.backgroundColor = 'transparent';
+                    this.parentElement.style.borderBottom = '1px solid #eee';
+                }
+            });
+        });
+
+        function updateScheduleInput() {
+            const selected = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    // 데이터 포맷: "요일-시간" (예: 월-10)
+                    selected.push(`${cb.dataset.day}-${cb.dataset.hour}`);
+                }
+            });
+            // 콤마로 연결해서 hidden input에 저장
+            scheduleInput.value = selected.join(',');
+        }
+    });
+</script>
+{% endblock %}

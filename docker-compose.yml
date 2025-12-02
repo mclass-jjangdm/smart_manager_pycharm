@@ -1,0 +1,52 @@
+services:
+  web:
+    build: .
+    container_name: smart_manager_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy    # DB가 healthy 상태일 때만 시작
+    dns:
+      - 168.126.63.1
+      - 8.8.8.8
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - default
+    env_file:
+      - .env
+
+  db:
+    image: mariadb:latest
+    container_name: smart_manager_db
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - default
+    environment:
+      - TZ=Asia/Seoul
+      - MARIADB_ROOT_PASSWORD=smartmanager@0104
+      - MARIADB_DATABASE=smart_manager_db
+      - MARIADB_USER=admin
+      - MARIADB_PASSWORD=test@0104
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  mariadb_data:
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1400

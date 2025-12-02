@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block container_class %}container-fluid.p-0{% endblock %}
+
+
+{% block content %}
+<style>
+
+    html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    }
+
+    .container-fluid.p-0 {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* 1. 레이아웃: 화면 전체 높이 사용 (스크롤 가두기 핵심) */
+    /* base.html에서 body margin을 0으로 했으므로 정확히 계산됩니다 */
+    .full-width-container {
+        width: 90%;
+        /* 전체 높이(100vh) - 네비게이션 높이(약 73px) = 남은 공간 */
+        height: calc(100vh - 73px);
+        display: flex;
+        flex-direction: column;
+        background-color: #f8f9fa;
+        overflow: hidden; /* 윈도우 스크롤 제거 */
+    }
+
+    /* 상단 컨트롤 바 */
+    .control-bar {
+        flex: 0 0 auto; /* 높이 고정 */
+        padding: 10px 20px;
+        background: #fff;
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* 진짜 스크롤이 생기는 곳 */
+    .spreadsheet-container {
+        flex: 1; /* 남은 높이 모두 차지 */
+        overflow: auto; /* 여기서만 스크롤! */
+        background: white;
+        position: relative;
+    }
+
+    /* 2. 테이블 스타일 (Sticky 필수: separate) */
+    .sheet-table {
+        min-width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12px;
+        table-layout: fixed;
+    }
+
+    .sheet-table th, .sheet-table td {
+        border-right: 1px solid #c0c0c0;
+        border-bottom: 1px solid #c0c0c0;
+        padding: 0 4px;
+        text-align: center;
+        vertical-align: middle;
+        height: 34px;
+        white-space: nowrap;
+        overflow: hidden;
+        color: #333;
+        box-sizing: border-box;
+    }
+
+    /* 3. 고정(Sticky) 설정 */
+
+    /* (1) 상단 헤더 고정 */
+    .sheet-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background-color: #eef1f5;
+        border-top: 1px solid #c0c0c0;
+        border-bottom: 2px solid #999;
+        font-weight: 600;
+    }
+
+    /* (2) 좌측 열 고정 (날짜) */
+    .sheet-table tbody td:nth-child(1) {
+        position: sticky; left: 0; z-index: 90;
+        background-color: #fff; border-right: 2px solid #b7b7b7; width: 80px; font-weight: bold;
+    }
+    /* (3) 좌측 열 고정 (요일) */
+    .sheet-table tbody td:nth-child(2) {
+        position: sticky; left: 80px; z-index: 90;
+        background-color: #fff; border-right: 2px solid #b7b7b7; width: 40px;
+    }
+
+    /* (4) 좌측 상단 교차점 고정 */
+    .sheet-table thead th:nth-child(1) { position: sticky; top: 0; left: 0; z-index: 200; width: 80px; border-right: 2px solid #b7b7b7; }
+    .sheet-table thead th:nth-child(2) { position: sticky; top: 0; left: 80px; z-index: 200; width: 40px; border-right: 2px solid #b7b7b7; }
+
+
+    /* 기타 스타일 (셀, 팝업 등 기존 유지) */
+    .editable-cell { cursor: pointer; background-color: #fff; }
+    .editable-cell:hover { background-color: #e8f0fe; outline: 2px solid #1a73e8; z-index: 10; }
+    .day-off { background-color: #ff9800 !important; color: #fff; }
+    .sunday { color: #d93025; } .saturday { color: #1967d2; }
+    .changed-sum { color: #d93025; font-weight: 800; }
+
+    /* 팝업 */
+    #student-selector { display: none; position: absolute; width: 220px; max-height: 300px; background: white; border: 1px solid #999; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 2000; border-radius: 4px; flex-direction: column; }
+    #student-selector-header { padding: 8px; border-bottom: 1px solid #eee; background: #f8f9fa; }
+    #student-search { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; }
+    #student-list-container { overflow-y: auto; flex: 1; padding: 5px 0; }
+    .student-option { padding: 5px 10px; display: flex; align-items: center; cursor: pointer; font-size: 13px; }
+    .student-option:hover { background-color: #e3f2fd; }
+    .student-option input { margin-right: 8px; cursor: pointer; }
+    .student-option.busy { display: none !important; }
+</style>
+
+<div class="control-bar">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <h4 style="margin:0; color: #202124; font-size: 1.1rem; font-weight: bold;">📅 {{ year }}년 {{ month }}월 수업 관리</h4>
+        <div class="btn-group">
+            <a href="?year={{ year }}&month={{ month|add:'-1' }}" class="btn btn-sm btn-outline-secondary">◀</a>
+            <a href="?year={{ year }}&month={{ month|add:'1' }}" class="btn btn-sm btn-outline-secondary">▶</a>
+        </div>
+        <small style="color: #666;">* 셀 클릭: 학생 선택 / 우클릭: 휴무 토글</small>
+    </div>
+    <div>
+        <button onclick="saveAllData()" class="btn btn-sm btn-primary" style="font-weight: bold; padding: 5px 20px;">💾 저장하기</button>
+    </div>
+</div>
+
+<div class="spreadsheet-container" id="grid-container">
+    <table class="sheet-table">
+        <thead>
+            <tr>
+                <th>날짜</th>
+                <th>요일</th>
+                {% for teacher in teachers %}
+                    <th style="min-width: 80px; background-color: #fff9c4;">{{ teacher.name }}</th>
+                {% endfor %}
+                <th style="width: 60px; background-color: #ffebee;">결석</th>
+                <th style="width: 60px; background-color: #fff3e0;">예외</th>
+                <th style="width: 50px; background-color: #e8f5e9;">합계</th>
+                <th style="width: 60px; background-color: #f3e5f5;">지각</th>
+                <th style="min-width: 200px;">특이사항</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for date, row in schedule_data.items %}
+            <tr data-date="{{ date|date:'Y-m-d' }}">
+                <td class="{% if row.day_name == 'Sun' %}sunday{% elif row.day_name == 'Sat' %}saturday{% endif %}">
+                    {{ date|date:"Y. m. d" }}
+                </td>
+                <td class="{% if row.day_name == 'Sun' %}sunday{% elif row.day_name == 'Sat' %}saturday{% endif %}">
+                    {{ row.day_name }}
+                </td>
+
+                {% for cell in row.teacher_cells %}
+                    <td class="editable-cell {% if cell.is_off %}day-off{% endif %}"
+                        data-type="teacher"
+                        data-teacher-id="{{ cell.teacher.pk }}"
+                        oncontextmenu="toggleDayOff(event, this)"
+                        onclick="openStudentSelector(this)">
+                        {% for stu in cell.students %}{{ stu.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    </td>
+                {% endfor %}
+
+                <td class="editable-cell" data-type="absent" onclick="openStudentSelector(this)" style="background-color: #ffebee;">
+                    {% for stu in row.log.absent_students.all %}{{ stu.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </td>
+                <td class="editable-cell" data-type="exception" onclick="openStudentSelector(this)" style="background-color: #fff3e0;">
+                    {% for stu in row.log.exception_students.all %}{{ stu.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </td>
+                <td class="sum-cell" style="background-color: #e8f5e9; font-weight: bold; color: #137333;">{{ row.total_count }}</td>
+                <td class="editable-cell" data-type="late" onclick="openStudentSelector(this)" style="background-color: #f3e5f5;">
+                    {% for stu in row.log.late_students.all %}{{ stu.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                </td>
+                <td contenteditable="true" class="editable-cell" data-type="remarks" style="text-align: left; padding-left: 5px; cursor: text;">
+                    {{ row.log.remarks|default:"" }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div id="student-selector">
+    <div id="student-selector-header">
+        <input type="text" id="student-search" placeholder="학생 이름 검색..." autocomplete="off">
+    </div>
+    <div id="student-list-container">
+        {% for student in all_students %}
+            <div class="student-option" data-name="{{ student.name }}">
+                <input type="checkbox" id="stu_{{ student.pk }}" value="{{ student.name }}">
+                <label for="stu_{{ student.pk }}">{{ student.name }}</label>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+    /* 자바스크립트는 이전에 작성해드린 '완벽 버전'과 동일합니다. */
+    /* (지각 분리, 중복 필터링, 저장 기능 모두 포함됨) */
+    let currentEditingCell = null;
+    const selector = document.getElementById('student-selector');
+    const searchInput = document.getElementById('student-search');
+    const options = document.querySelectorAll('.student-option');
+
+    function toggleDayOff(e, td) {
+        e.preventDefault();
+        td.classList.toggle('day-off');
+    }
+
+    function openStudentSelector(td) {
+        if (currentEditingCell === td && selector.style.display === 'flex') {
+            closeSelector(); return;
+        }
+        currentEditingCell = td;
+
+        const rect = td.getBoundingClientRect();
+        selector.style.display = 'flex';
+        selector.style.top = (rect.bottom + window.scrollY) + 'px';
+        selector.style.left = (rect.left + window.scrollX) + 'px';
+        if (rect.left + 220 > window.innerWidth) selector.style.left = (window.innerWidth - 230) + 'px';
+
+        const currentNames = td.innerText.split(',').map(s => s.trim());
+
+        const currentRow = td.parentElement;
+        const currentType = td.dataset.type;
+        const busyNames = new Set();
+
+        if (currentType !== 'late') {
+            const siblingCells = currentRow.querySelectorAll('.editable-cell[data-type="teacher"], .editable-cell[data-type="absent"], .editable-cell[data-type="exception"]');
+            siblingCells.forEach(cell => {
+                if (cell === td) return;
+                const names = cell.innerText.split(',').map(s => s.trim()).filter(s => s);
+                names.forEach(n => busyNames.add(n));
+            });
+        }
+
+        searchInput.value = '';
+        options.forEach(opt => {
+            const checkbox = opt.querySelector('input');
+            const name = checkbox.value;
+
+            if (busyNames.has(name)) {
+                opt.classList.add('busy');
+                opt.style.display = 'none';
+                checkbox.checked = false;
+            } else {
+                opt.classList.remove('busy');
+                opt.style.display = 'flex';
+                checkbox.checked = currentNames.includes(name);
+            }
+        });
+        searchInput.focus();
+    }
+
+    function closeSelector() {
+        selector.style.display = 'none';
+        currentEditingCell = null;
+    }
+
+    searchInput.addEventListener('input', function() {
+        const keyword = this.value.toLowerCase();
+        options.forEach(opt => {
+            if (opt.classList.contains('busy')) return;
+            const name = opt.dataset.name.toLowerCase();
+            opt.style.display = name.includes(keyword) ? 'flex' : 'none';
+        });
+    });
+
+    document.getElementById('student-list-container').addEventListener('change', function(e) {
+        if (e.target.type === 'checkbox' && currentEditingCell) {
+            updateCellFromSelection();
+        }
+    });
+
+    function updateCellFromSelection() {
+        if (!currentEditingCell) return;
+        const selectedNames = [];
+        options.forEach(opt => {
+            const checkbox = opt.querySelector('input');
+            if (checkbox.checked) selectedNames.push(checkbox.value);
+        });
+        currentEditingCell.innerText = selectedNames.join(', ');
+        updateRowSum(currentEditingCell.parentElement);
+    }
+
+    document.addEventListener('click', function(e) {
+        if (selector.contains(e.target) || (currentEditingCell && currentEditingCell.contains(e.target))) return;
+        closeSelector();
+    });
+
+    function updateRowSum(tr) {
+        const cells = tr.querySelectorAll('td[data-type="teacher"], td[data-type="absent"], td[data-type="exception"]');
+        let sum = 0;
+        cells.forEach(cell => {
+            const text = cell.innerText.trim();
+            if (text) sum += text.split(',').filter(s => s.trim().length > 0).length;
+        });
+        const sumCell = tr.querySelector('.sum-cell');
+        const oldSum = parseInt(sumCell.innerText) || 0;
+        if (sum !== oldSum) {
+            sumCell.innerText = sum;
+            sumCell.classList.add('changed-sum');
+        }
+    }
+
+    function saveAllData() {
+        const rows = document.querySelectorAll('tbody tr');
+        const payload = [];
+        rows.forEach(tr => {
+            const date = tr.dataset.date;
+            const rowData = { date: date, teachers: {}, logs: {} };
+            tr.querySelectorAll('td[data-type="teacher"]').forEach(td => {
+                const teacherId = td.dataset.teacherId;
+                const text = td.innerText.trim();
+                const isOff = td.classList.contains('day-off');
+                rowData.teachers[teacherId] = { 'text': text, 'is_off': isOff };
+            });
+            tr.querySelectorAll('td[data-type="absent"], td[data-type="exception"], td[data-type="late"]').forEach(td => {
+                rowData.logs[td.dataset.type] = td.innerText.trim();
+            });
+            const remarksTd = tr.querySelector('td[data-type="remarks"]');
+            if (remarksTd) rowData.logs['remarks'] = remarksTd.innerText.trim();
+            payload.push(rowData);
+        });
+
+        if (!confirm('저장하시겠습니까?')) return;
+
+        fetch("{% url 'save_monthly_schedule' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({ schedules: payload })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('✅ 저장되었습니다.');
+                location.reload();
+            } else {
+                alert('❌ 오류: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('통신 오류');
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="margin:0; font-size: 1.8rem;">
+        <span style="color:#673ab7;">●</span> 도서 상세 정보
+    </h2>
+    <div>
+        <a href="{% url 'book_restock' book.pk %}" class="btn" style="background-color: #2e7d32; margin-right: 5px;">
+            + 재고 입고
+        </a>
+        <a href="{% url 'book_update' book.pk %}" class="btn" style="background-color: #ff9800;">
+            정보 수정
+        </a>
+    </div>
+</div>
+
+<div class="info-card" style="background-color: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 30px;">
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+        
+        <div>
+            <h3 style="border-bottom: 2px solid #673ab7; padding-bottom: 10px; color: #4527a0; margin-top: 0;">
+                {{ book.title }}
+            </h3>
+            <table style="width: 100%; font-size: 1rem; margin-top: 15px; border: none;">
+                <tr>
+                    <th style="width: 120px; background: none; border: none; color: #666;">바코드(ISBN)</th>
+                    <td style="border: none; font-family: monospace; font-size: 1.1rem;">{{ book.isbn }}</td>
+                </tr>
+                <tr>
+                    <th style="background: none; border: none; color: #666;">저자</th>
+                    <td style="border: none;">{{ book.author|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th style="background: none; border: none; color: #666;">출판사</th>
+                    <td style="border: none;">{{ book.publisher|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th style="background: none; border: none; color: #666;">등록일</th>
+                    <td style="border: none;">{{ book.created_at|date:"Y-m-d" }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px;">
+            <h4 style="margin-top: 0; color: #666;">📊 가격 및 재고</h4>
+            <ul style="list-style: none; padding: 0; line-height: 2;">
+                <li>
+                    <span style="color: #888; display: inline-block; width: 80px;">정상 가격:</span> 
+                    <span style="text-decoration: line-through;">{{ book.original_price|intcomma }}원</span>
+                </li>
+                <li>
+                    <span style="color: #555; display: inline-block; width: 80px;">입고 단가:</span> 
+                    <span>{{ book.cost_price|intcomma }}원</span>
+                </li>
+                <li style="margin-top: 10px; font-size: 1.1rem;">
+                    <span style="color: #e65100; display: inline-block; width: 80px; font-weight: bold;">판매 가격:</span> 
+                    <span style="font-weight: bold; color: #e65100;">{{ book.price|intcomma }}원</span>
+                </li>
+                <li style="margin-top: 15px; border-top: 1px solid #ddd; padding-top: 15px;">
+                    <span style="display: inline-block; width: 80px;">현재 재고:</span> 
+                    <span style="font-size: 1.5rem; font-weight: bold; color: #2e7d32;">{{ book.stock|intcomma }}</span> 권
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<h3 style="color: #4527a0; margin-bottom: 15px;">📦 입고 이력 (Stock Logs)</h3>
+<table style="width: 100%;">
+    <thead style="background-color: #f3e5f5;">
+        <tr>
+            <th style="width: 20%;">입고 날짜</th>
+            <th style="width: 15%; text-align: center;">입고 수량</th>
+            <th style="width: 20%; text-align: right;">당시 입고 단가</th>
+            <th style="width: 45%;">비고</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in stock_logs %}
+        <tr>
+            <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
+            <td style="text-align: center; font-weight: bold;">
+                {% if log.quantity > 0 %}
+                    <span style="color: #2e7d32;">+{{ log.quantity }}</span>
+                {% else %}
+                    <span style="color: #e53935;">{{ log.quantity }}</span>
+                {% endif %}
+            </td>
+            <td style="text-align: right;">{{ log.cost_price|intcomma }}원</td>
+            <td>{{ log.memo|default:"-" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" style="text-align: center; padding: 30px; color: #999;">
+                입고 기록이 없습니다.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div style="margin-top: 30px; text-align: center;">
+    <a href="{% url 'book_list' %}" class="btn" style="background-color: #757575;">← 목록으로 돌아가기</a>
+</div>
+{% endblock %}

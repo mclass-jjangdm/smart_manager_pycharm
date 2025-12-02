@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #4527a0; border-bottom: 2px solid #673ab7; padding-bottom: 10px; margin-bottom: 20px;">
+        📩 문자 메시지 발송
+    </h2>
+    <p style="font-size: 1.1rem; margin-bottom: 20px;">
+        수신자: <strong>{{ student.name }}</strong>
+    </p>
+
+    <div class="info-card" style="padding: 30px;">
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: bold; display: block; margin-bottom: 10px;">수신 대상</label>
+                <div style="display: flex; gap: 20px;">
+                    {% for radio in form.target %}
+                        <label style="cursor: pointer;">
+                            {{ radio.tag }} {{ radio.choice_label }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label for="id_message" style="font-weight: bold; display: block; margin-bottom: 10px;">내용</label>
+                {{ form.message }}
+                <div style="text-align: right; font-size: 0.8rem; color: #666; margin-top: 5px;">
+                    * 90바이트 초과 시 LMS(장문)로 발송됩니다.
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" class="btn" style="background-color: #4527a0; padding: 10px 40px; font-size: 1.1rem;">
+                    전송하기
+                </button>
+                <a href="{% url 'student_detail' student.pk %}" class="btn" style="background-color: #757575; margin-left: 10px;">취소</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

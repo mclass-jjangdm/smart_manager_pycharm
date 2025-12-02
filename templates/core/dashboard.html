@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<style>
+    /* 1. style.css에 없는 4열 그리드 레이아웃 정의 */
+    .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+
+    /* 2. 대시보드 전용 텍스트 유틸리티 */
+    .dash-label {
+        font-size: 0.9rem;
+        color: var(--text-sub);
+        font-weight: 600;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .dash-value {
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 15px;
+    }
+    .dash-link {
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: 0.2s;
+    }
+    .dash-link:hover { text-decoration: underline; }
+
+    /* 3. 카드 포인트 컬러 (CSS 변수 활용) */
+    .card-primary { border-left: 5px solid var(--primary); }
+    .card-success { border-left: 5px solid var(--success); }
+    .card-danger  { border-left: 5px solid var(--danger); }
+    .card-warning { border-left: 5px solid #F59E0B; } /* Warning 컬러는 별도 지정 */
+
+    /* 텍스트 색상 헬퍼 */
+    .text-primary { color: var(--primary); }
+    .text-success { color: var(--success); }
+    .text-danger  { color: var(--danger); }
+    .text-warning { color: #F59E0B; }
+
+    /* 반응형 처리 */
+    @media (max-width: 1024px) {
+        .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .grid-4 { grid-template-columns: 1fr; }
+    }
+</style>
+
+<!-- 헤더 섹션 -->
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
+    <div>
+        <h2 style="margin: 0; color: var(--text-main);">👋 안녕하세요, 관리자님!</h2>
+        <p style="margin: 5px 0 0; color: var(--text-sub);">학원 운영 현황을 한눈에 확인하세요.</p>
+    </div>
+    <form action="{% url 'monthly_batch_charge' %}" method="POST" style="margin: 0;">
+        {% csrf_token %}
+        <!-- style.css의 .btn .btn-primary 클래스 활용 -->
+        <button type="submit" class="btn btn-primary" onclick="return confirm('이번 달 수강료를 일괄 청구하시겠습니까?');">
+            💰 수강료 일괄 청구
+        </button>
+    </form>
+</div>
+
+<!-- 상단 요약 카드 (Grid 4) -->
+<div class="grid-4" style="margin-bottom: 30px;">
+    <!-- 총 학생 수 -->
+    <div class="card card-primary">
+        <div class="dash-label">Total Students</div>
+        <div class="dash-value text-primary">{{ total_students }}명</div>
+        <a href="{% url 'student_list' %}" class="dash-link text-primary">
+            학생 관리 <span style="font-size: 1.1em;">→</span>
+        </a>
+    </div>
+
+    <!-- 총 교사 수 -->
+    <div class="card card-success">
+        <div class="dash-label">Total Teachers</div>
+        <div class="dash-value text-success">{{ total_teachers }}명</div>
+        <a href="{% url 'teacher_list' %}" class="dash-link text-success">
+            교사 관리 <span style="font-size: 1.1em;">→</span>
+        </a>
+    </div>
+
+    <!-- 미납 수강료 -->
+    <div class="card card-danger">
+        <div class="dash-label">Unpaid Tuition</div>
+        <div class="dash-value text-danger">{{ total_unpaid|intcomma }}원</div>
+        <a href="{% url 'student_list' %}" class="dash-link text-danger">
+            미납자 확인 <span style="font-size: 1.1em;">→</span>
+        </a>
+    </div>
+
+    <!-- 품절 도서 -->
+    <div class="card card-warning">
+        <div class="dash-label">Out of Stock</div>
+        <div class="dash-value text-warning">{{ out_of_stock_count }}종</div>
+        <a href="{% url 'book_list' %}" class="dash-link text-warning">
+            재고 입고 <span style="font-size: 1.1em;">→</span>
+        </a>
+    </div>
+</div>
+
+<!-- 하단 상세 정보 (Grid 2 - style.css에 정의된 클래스) -->
+<div class="grid-2">
+    <!-- 재고 부족 알림 -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 10px;">
+            <h3 style="margin: 0; font-size: 1.1rem;">⚠️ 재고 부족 알림 <small style="color: var(--text-sub); font-weight: normal;">(5권 이하)</small></h3>
+            <a href="{% url 'book_list' %}" class="btn-sm btn-outline">전체보기</a>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>도서명</th>
+                        <th style="text-align: right;">현재고</th>
+                        <th style="text-align: center;">상태</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for book in low_stock_books %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ book.title }}</td>
+                        <td style="text-align: right; font-weight: bold; color: var(--danger);">{{ book.stock }}권</td>
+                        <td style="text-align: center;">
+                            <!-- style.css의 badge 클래스 활용 -->
+                            <a href="{% url 'book_restock' book.pk %}" class="badge badge-red">입고필요</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 20px; color: var(--text-sub);">
+                            재고 부족 도서가 없습니다.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 최근 서점 활동 -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 10px;">
+            <h3 style="margin: 0; font-size: 1.1rem;">🕒 최근 서점 활동 로그</h3>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">시간</th>
+                        <th>도서명</th>
+                        <th style="text-align: right;">내역</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_logs %}
+                    <tr>
+                        <td style="color: var(--text-sub); font-size: 0.9rem;">{{ log.created_at|date:"m-d H:i" }}</td>
+                        <td style="font-weight: 500;">{{ log.book.title }}</td>
+                        <td style="text-align: right;">
+                            {% if log.quantity > 0 %}
+                                <span class="badge badge-green">입고 +{{ log.quantity }}</span>
+                            {% else %}
+                                <span class="badge badge-red">반품 {{ log.quantity }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 20px; color: var(--text-sub);">
+                            최근 활동 내역이 없습니다.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

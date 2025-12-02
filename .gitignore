@@ -25,6 +25,7 @@ static/
 !static/css/  # (단, 개발자가 만든 css 폴더는 예외로 올림)
 !static/js/
 !static/img/
+!static/fonts/
 
 # 6. Docker (필요에 따라)
 .pytest_cache/

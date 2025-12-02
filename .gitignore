@@ -21,7 +21,7 @@ secrets.json
 
 # 5. 미디어 파일 (학생 사진 등은 서버에만 있어야 함)
 media/
-static/
+# static/
 !static/css/  # (단, 개발자가 만든 css 폴더는 예외로 올림)
 !static/js/
 !static/img/

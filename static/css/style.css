@@ -1,0 +1,126 @@
+/* 1. 폰트 설정 */
+/* 영문은 Ubuntu, 한글은 시스템 기본 고딕체(맑은 고딕, 산돌고딕 등)를 사용하여 Ubuntu와 위화감 없이 어울리게 합니다 */
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&display=swap');
+
+:root {
+    --primary: #4F46E5;       /* 인디고 (강조색) */
+    --primary-dark: #3730A3;
+    --nav-bg: #1E293B;        /* 네비게이션 배경 (진한 남색) */
+    --nav-text: #F8FAFC;      /* 네비게이션 글자 (흰색) */
+    --bg-body: #F3F4F6;       /* 전체 배경 (연한 회색) */
+    --bg-white: #FFFFFF;
+    --text-main: #111827;     /* 본문 글자 (검정) */
+    --text-sub: #6B7280;      /* 보조 글자 (회색) */
+    --border: #E5E7EB;
+    --danger: #EF4444;
+    --success: #10B981;
+}
+
+/* 2. 전체 초기화 및 폰트 적용 */
+* { box-sizing: border-box; }
+body {
+    margin: 0; padding: 0;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    /* [핵심 변경] 마루부리 삭제 -> Ubuntu 및 고딕(sans-serif) 우선 적용 */
+    font-family: 'Ubuntu', sans-serif;
+    line-height: 1.6;
+}
+a { text-decoration: none; color: inherit; transition: 0.2s; }
+
+/* 3. 네비게이션 (가독성 강화) */
+.navbar {
+    background-color: var(--nav-bg);
+    height: 64px;
+    display: flex; align-items: center;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    position: sticky; top: 0; z-index: 100;
+}
+.navbar-inner {
+    width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 20px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.brand {
+    font-size: 1.5rem; font-weight: 700; color: #FFFFFF;
+    font-family: 'Ubuntu', sans-serif; /* 로고는 무조건 Ubuntu */
+}
+.nav-menu { display: flex; gap: 20px; align-items: center; }
+.nav-item {
+    color: #CBD5E1; font-weight: 500; font-size: 0.95rem; padding: 6px 10px; border-radius: 6px;
+}
+.nav-item:hover { color: #FFFFFF; background-color: rgba(255,255,255,0.1); }
+
+/* 4. 컨테이너 & 카드 */
+.container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+.container.wide { max-width: 95%; }
+
+.card {
+    background: var(--bg-white);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    border: 1px solid var(--border);
+}
+
+/* 5. 입력 폼 스타일 */
+.form-group { margin-bottom: 20px; }
+.form-label {
+    display: block; margin-bottom: 6px;
+    font-weight: 600; color: var(--text-main);
+}
+input[type="text"], input[type="number"], input[type="date"],
+input[type="email"], select, textarea {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid #D1D5DB; border-radius: 6px;
+    font-size: 1rem; background-color: #fff;
+    transition: all 0.2s;
+    font-family: 'Ubuntu', sans-serif; /* 입력창 폰트도 통일 */
+}
+input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+/* 6. 버튼 스타일 */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 10px 24px; border-radius: 6px;
+    font-weight: 600; cursor: pointer; border: none; font-size: 1rem;
+    font-family: 'Ubuntu', sans-serif;
+}
+.btn-primary { background-color: var(--primary); color: white; }
+.btn-primary:hover { background-color: var(--primary-dark); }
+.btn-outline { background-color: white; border: 1px solid #D1D5DB; color: var(--text-main); }
+.btn-outline:hover { background-color: #F3F4F6; border-color: #9CA3AF; }
+.btn-danger { background-color: var(--danger); color: white; }
+.btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+
+/* 7. 테이블 스타일 */
+.table-wrapper { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th {
+    background: #F8FAFC; color: var(--text-sub); font-weight: 600;
+    padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+td {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    color: var(--text-main); vertical-align: middle;
+}
+tr:hover td { background-color: #F8FAFC; }
+
+/* 8. 뱃지 및 유틸리티 */
+.badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; }
+.badge-red { background: #FEF2F2; color: #DC2626; }
+.badge-green { background: #ECFDF5; color: #059669; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .navbar { height: auto; padding: 10px 0; }
+    .navbar-inner { flex-direction: column; gap: 10px; }
+    .nav-menu { flex-wrap: wrap; justify-content: center; }
+}
